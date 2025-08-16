@@ -25,9 +25,7 @@ local MeusScripts = {
         Title = "Hub para Flee the Facility",
         Desc = "Executa o script que criamos com Fly, ESP, Click TP, etc.",
         Source = [[
-            -- COLE AQUI O CÓDIGO INTEIRO DO SEU SCRIPT ANTERIOR
-            -- Exemplo:
-            local WindUI_FTF = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+            -- COLE AQUI O CÓDIGO INTEIRO DO SEU SCRIPT ANTES
             local RunService = game:GetService("RunService")
             -- ... e assim por diante, cole todo o resto do script aqui dentro.
             -- Deixei este em branco para você mesmo colar.
@@ -37,10 +35,10 @@ local MeusScripts = {
     -- [[ MODELO PARA ADICIONAR SEU PRÓXIMO SCRIPT ]]
     -- Copie e cole este bloco para adicionar mais scripts.
     {
-        Title = "Nome do Seu Novo Script", -- O que vai aparecer no botão
-        Desc = "Uma breve descrição do que ele faz.", -- A dica que aparece ao passar o mouse
+        Title = "FREE THE FACILITY", -- O que vai aparecer no botão
+        Desc = "EXECUTE ESTE SCRIPT", -- A dica que aparece ao passar o mouse
         Source = [[
-            -- COLE O CÓDIGO DO SEU NOVO SCRIPT AQUI DENTRO
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/NickNick00/ScriptFree-the-facility/refs/heads/main/.lua"))()
             print("Meu novo script funciona!")
         ]]
     }
