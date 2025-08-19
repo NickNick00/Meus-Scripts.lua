@@ -7,12 +7,12 @@ local MeusScripts = {
             Title = "Hub Completo",
             Desc = "Executa o script com Fly, ESP, Click TP, etc.",
             Source = [[
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/NickNick00/ScriptFree-the-facility/refs/heads/main/.lua"))()
-                print("Cole o script do Flee the Facility aqui!")
+loadstring(game:HttpGet("https://raw.githubusercontent.com/NickNick00/ScriptFree-the-facility/refs/heads/main/.lua"))()
+
             ]]
         },
         {
-            Title = "Outro Script para FTF",
+            Title = "",
             Desc = "Descrição do outro script.",
             Source = [[
                 print("Outro script foi executado!")
