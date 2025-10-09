@@ -77,7 +77,7 @@ local espColor = Color3.fromRGB(0, 255, 0)
 -- BRING GLOBAL
 local bringUntouchable = false
 local bringFreecamActive = false
-local bringHeight = 20 -- Altura padrao para onde os itens sao puxados (ALTERADO: Era 50, agora 20)
+local bringHeight = 50 -- Altura padrao para onde os itens sao puxados
 local noQuantityLimit = false -- Sem Limite de Quantidade
 local selectedBringDestination = "Voce (Player)"
 
@@ -96,11 +96,11 @@ local currentBringMethod = "Simples" -- "Simples" ou "Teleporte"
 
 -- BRING SIMPLES (Antigo Bring 1)
 local bringSimpleRange = 10000
-local bringSimpleMaxQuantity = 100 -- (ALTERADO: Era 50, agora 100)
+local bringSimpleMaxQuantity = 50
 
 -- BRING TELEPORTE (Antigo Bring 2)
 local bringTPRange = 10000
-local bringTPCooldown = 1 -- (ALTERADO: Era 0.5, agora 1)
+local bringTPCooldown = 0.5
 
 -- PLAYER MOVEMENT
 local currentWalkSpeed = 16
@@ -191,13 +191,13 @@ local ITEM_DATABASE = {
 
 -- Mapeamento de categorias para suas variáveis de controle
 local CATEGORY_CONTROLS = {
-    Combustivel = {active = false, connection = nil, specificItem = {}, lastIndex = 1, lastBringTimeTP = 0}, -- specificItem agora é uma tabela
-    ["Comida e Cura"] = {active = false, connection = nil, specificItem = {}, lastIndex = 1, lastBringTimeTP = 0},
-    Sucata = {active = false, connection = nil, specificItem = {}, lastIndex = 1, lastBringTimeTP = 0},
-    ["Armas e Armaduras"] = {active = false, connection = nil, specificItem = {}, lastIndex = 1, lastBringTimeTP = 0},
-    Outros = {active = false, connection = nil, specificItem = {}, lastIndex = 1, lastBringTimeTP = 0},
-    Meteorito = {active = false, connection = nil, specificItem = {}, lastIndex = 1, lastBringTimeTP = 0},
-    Cultista = {active = false, connection = nil, specificItem = {}, lastIndex = 1, lastBringTimeTP = 0},
+    Combustivel = {active = false, connection = nil, specificItem = nil, lastIndex = 1, lastBringTimeTP = 0},
+    ["Comida e Cura"] = {active = false, connection = nil, specificItem = nil, lastIndex = 1, lastBringTimeTP = 0},
+    Sucata = {active = false, connection = nil, specificItem = nil, lastIndex = 1, lastBringTimeTP = 0},
+    ["Armas e Armaduras"] = {active = false, connection = nil, specificItem = nil, lastIndex = 1, lastBringTimeTP = 0},
+    Outros = {active = false, connection = nil, specificItem = nil, lastIndex = 1, lastBringTimeTP = 0},
+    Meteorito = {active = false, connection = nil, specificItem = nil, lastIndex = 1, lastBringTimeTP = 0},
+    Cultista = {active = false, connection = nil, specificItem = nil, lastIndex = 1, lastBringTimeTP = 0},
 }
 
 -- ===================================================================
@@ -581,7 +581,7 @@ local function applyPlayerBringState(disconnectCamera)
 end
 
 -- Lógica unificada para trazer itens (agora chamada por `bringItemsOnceForCategory`)
-local function runBringLogic(categoryName, specificItemNames, bringRange, maxQuantity, bringCooldown, bringMethod)
+local function runBringLogic(categoryName, specificItemName, bringRange, maxQuantity, bringCooldown, bringMethod)
     if not Player.Character then return false end
     local playerHrp = Player.Character:FindFirstChild("HumanoidRootPart")
     local playerHumanoid = Player.Character:FindFirstChildOfClass("Humanoid")
@@ -593,11 +593,12 @@ local function runBringLogic(categoryName, specificItemNames, bringRange, maxQua
         return false -- Indica falha
     end
 
-    if not specificItemNames or #specificItemNames == 0 then return false end -- Nao faz nada se nenhum item for selecionado
+    local itemsToConsiderNames = {specificItemName}
+    if #itemsToConsiderNames == 0 or specificItemName == nil then return false end
 
     local itemsFoundInRange = {}
     for itemInstance, _ in pairs(trackedGroundItems) do
-        if itemInstance and itemInstance.Parent and find(specificItemNames, itemInstance.Name) then -- Usa find na tabela de nomes
+        if itemInstance and itemInstance.Parent and find(itemsToConsiderNames, itemInstance.Name) then
             local itemPosition = getSafePosition(itemInstance)
             if itemPosition and (playerHrp.Position - itemPosition).Magnitude <= bringRange then
                 table.insert(itemsFoundInRange, itemInstance)
@@ -664,7 +665,7 @@ local function runBringLogic(categoryName, specificItemNames, bringRange, maxQua
         local minDistance = bringRange + 1
 
         for itemInstance, _ in pairs(trackedGroundItems) do
-            if itemInstance and itemInstance.Parent and find(specificItemNames, itemInstance.Name) then
+            if itemInstance and itemInstance.Parent and find(itemsToConsiderNames, itemInstance.Name) then
                 local itemPosition = getSafePosition(itemInstance)
                 if itemPosition then
                     local currentDistance = (playerHrp.Position - itemPosition).Magnitude
@@ -756,8 +757,8 @@ local function bringItemsOnceForCategory(categoryName)
         return
     end
 
-    if not control.specificItem or #control.specificItem == 0 then -- Verifica se a tabela de itens está vazia
-        WindUI:Notify({Title = "Bring Error", Content = "Selecione um ou mais itens para puxar na categoria '" .. categoryName .. "'!", Color = "Red", Duration = 3})
+    if control.specificItem == nil or control.specificItem == "" then
+        WindUI:Notify({Title = "Bring Error", Content = "Selecione um item para puxar na categoria '" .. categoryName .. "'!", Color = "Red", Duration = 3})
         return
     end
 
@@ -774,9 +775,9 @@ local function bringItemsOnceForCategory(categoryName)
     restorePlayerState()
 
     if success then
-        WindUI:Notify({Title = "Bring Manual", Content = "Itens (" .. table.concat(control.specificItem, ", ") .. ") puxados para '" .. selectedBringDestination .. "'!", Color = "Green", Duration = 2})
+        WindUI:Notify({Title = "Bring Manual", Content = "Itens de '" .. control.specificItem .. "' puxados para '" .. selectedBringDestination .. "'!", Color = "Green", Duration = 2})
     else
-        WindUI:Notify({Title = "Bring Manual", Content = "Nenhum item (" .. table.concat(control.specificItem, ", ") .. ") encontrado no raio ou em cooldown.", Color = "Orange", Duration = 2})
+        WindUI:Notify({Title = "Bring Manual", Content = "Nenhum item '" .. control.specificItem .. "' encontrado no raio ou em cooldown.", Color = "Orange", Duration = 2})
     end
 end
 
@@ -835,57 +836,12 @@ local function teleportToPosition(position, name)
 end
 
 -- ===================================================================
---                  NOVAS COORDENADAS E ESTRUTURAS DE TELEPORTE
---                  !!! ATENÇÃO: SUBSTITUA (X, Y, Z) PELAS COORDENADAS REAIS DO JOGO !!!
--- ===================================================================
-
-local FIXED_TELEPORT_LOCATIONS = {
-    ["Acampamento"] = Vector3.new(0, 100, 0), -- EX: Coordenadas do acampamento inicial ou principal
-    ["Base do Gerador Cultista"] = Vector3.new(2500, 150, 2500), -- EX: Coordenadas da base do gerador cultista
-    ["Stronghold"] = Vector3.new(-1000, 200, -1000), -- EX: Coordenadas do Stronghold
-    ["Baú de Diamantes do Stronghold"] = Vector3.new(-1020, 180, -1010), -- EX: Coordenadas do baú de diamantes
-    ["Caravana"] = Vector3.new(500, 50, -1500), -- EX: Coordenadas da caravana
-    ["Fada"] = Vector3.new(120, 70, 80), -- EX: Coordenadas da área da Fada
-    ["Bigorna"] = Vector3.new(30, 40, 30) -- EX: Coordenadas da bigorna
-}
-
-local STRUCTURE_TELEPORT_COORDS = {
-    -- Fishing Hut (Cabana de Pesca)
-    ["Fishing Hut"] = Vector3.new(100, 50, 200),
-    -- Outfit Generator Base (Base do Gerador de Roupa)
-    ["Outfit Generator Base"] = Vector3.new(150, 50, 250),
-    -- Volcano (Vulcão)
-    ["Volcano"] = Vector3.new(200, 100, 300),
-    -- AlienMothership (Nave Mãe Alienígena)
-    ["AlienMothership"] = Vector3.new(5000, 2000, 5000),
-    -- AlienCrash_Active (Local de Queda Alienígena Ativo)
-    ["AlienCrash_Active"] = Vector3.new(550, 70, 550),
-    -- Military Base (Base Militar)
-    ["Military Base"] = Vector3.new(-1000, 50, -200),
-    -- Snow Clothing Shop (Loja de Roupas de Neve)
-    ["Snow Clothing Shop"] = Vector3.new(-1500, 60, -250),
-    -- Testing Facility (Instalação de Testes)
-    ["Testing Facility"] = Vector3.new(-2000, 50, -300),
-    -- Oficina de Ferramentas (Assumindo que seja como um "Workshop")
-    ["Oficina de Ferramentas"] = Vector3.new(70, 40, 90), 
-    -- Fairy House (Casa da Fada)
-    ["Fairy House"] = Vector3.new(80, 55, 120),
-}
-
-local STRUCTURE_TELEPORT_NAMES = {}
-for name, _ in pairs(STRUCTURE_TELEPORT_COORDS) do
-    table.insert(STRUCTURE_TELEPORT_NAMES, name)
-end
-table.sort(STRUCTURE_TELEPORT_NAMES)
-
-
--- ===================================================================
 --                  KILL AURA FUNÇÕES
 -- ===================================================================
 
 local function findRemoteEvents()
     if not REPLICATED_STORAGE_EVENTS_PATH then
-        warn("KillAura: Pasta 'RemoteEvents' nao encontrada em ReplicatedStorage. Funcoes de combate/corte nao funcionarão.")
+        warn("KillAura: Pasta 'RemoteEvents' nao encontrada em ReplicatedStorage. Funcoes de combate/corte nao funcionarao.")
         return
     end
 
@@ -1057,7 +1013,7 @@ TabBring:Toggle({
     Desc = "Torna seu personagem sem colisao enquanto o Bring esta ativo. Pode ser detectado.",
     Callback = function(state)
         bringUntouchable = state
-        -- A lógica de applyPlayerBringState será chamada pela função bringItemsOnceForCategory quando o botão de Bring for clicada.
+        -- A lógica de applyPlayerBringState será chamada pela função bringItemsOnceForCategory quando o botão de Bring for clicado.
         WindUI:Notify({Title = "Bring Untouchable", Content = "Untouchable para Bring: " .. (state and "ATIVADO" or "DESATIVADO"), Color = "Blue", Duration = 2})
     end
 })
@@ -1177,7 +1133,7 @@ TabBring:Toggle({
 
 TabBring:Divider()
 
--- Funcao auxiliar para criar dropdowns de item por categoria e BOTÕES (AGORA MULTI-SELECT)
+-- Funcao auxiliar para criar dropdowns de item por categoria e BOTÕES
 local function createCategoryBringUI(tab, categoryName)
     local categoryControl = CATEGORY_CONTROLS[categoryName]
 
@@ -1189,31 +1145,27 @@ local function createCategoryBringUI(tab, categoryName)
     end
     table.sort(itemsInCategoryList)
 
-    -- Valor padrão para dropdown multi-select: uma tabela (vazia por padrão)
-    local defaultSelectedItems = {} 
-    -- Se quiser que um item seja pré-selecionado, adicione-o aqui, ex: {itemsInCategoryList[1]}
+    local defaultItem = itemsInCategoryList[1] or nil
+    categoryControl.specificItem = defaultItem
 
-    -- Alterado para Dropdown multi-select (Multi = true)
     local specificItemDropdown_UI = tab:Dropdown({
-        Title = categoryName .. " (Itens)", -- Título alterado para indicar multi-select
+        Title = categoryName .. " (Item)",
         Values = itemsInCategoryList,
-        Default = defaultSelectedItems, -- Valor padrão é uma tabela
-        Multi = true, -- Ativa a multi-seleção
-        AllowNone = true, -- Permite não selecionar nenhum item
-        Callback = function(selectedItemsTable) -- Callback agora recebe uma tabela
-            categoryControl.specificItem = selectedItemsTable
+        Default = defaultItem,
+        Callback = function(name)
+            categoryControl.specificItem = name
         end
     })
     
     tab:Button({
         Title = "Trazer " .. categoryName .. " (Uma Vez)",
-        Desc = "Puxa os itens do(s) tipo(s) selecionado(s) da categoria " .. categoryName .. " uma vez para o destino.",
+        Desc = "Puxa os itens do tipo selecionado da categoria " .. categoryName .. " uma vez para o destino.",
         Callback = function()
             bringItemsOnceForCategory(categoryName)
         end
     })
-    return specificItemDropdown_UI
-end -- <--- O 'end' para fechar a função createCategoryBringUI está aqui.
+    return specificItemDropdown_UI -- Retorna a referência do dropdown
+end
 
 -- Criacao dos controles de Bring por Categoria
 local bringCategoryDropdowns = {}
@@ -1284,52 +1236,10 @@ local jumppowerInput_UI = TabTeleporte:Input({
     end
 })
 
-TabTeleporte:Section({ Title = "Teleporte Rapido para Locais Fixos" }) -- Nova seção para locais fixos
-for name, coords in pairs(FIXED_TELEPORT_LOCATIONS) do
-    TabTeleporte:Button({
-        Title = "TP para " .. name,
-        Desc = "Teleporta voce para o " .. name .. ".",
-        Callback = function()
-            teleportToPosition(coords, name)
-        end
-    })
-end
-
-TabTeleporte:Section({ Title = "Teleporte Rapido para Estruturas" }) -- Nova seção para estruturas do jogo
-
-local selectedStructure = "Nenhum"
-local structureDropdown_UI = TabTeleporte:Dropdown({
-    Title = "TP para Estrutura:",
-    Values = STRUCTURE_TELEPORT_NAMES,
-    Default = STRUCTURE_TELEPORT_NAMES[1] or "Nenhum",
-    Callback = function(name)
-        selectedStructure = name
-        WindUI:Notify({Title = "Teleporte", Content = "Estrutura selecionada: " .. tostring(name), Color = "Blue", Duration = 2})
-    end
-})
+TabTeleporte:Section({ Title = "Teleporte Rapido" })
 TabTeleporte:Button({
-    Title = "Teleportar para Estrutura",
-    Desc = "Teleporta para a estrutura selecionada no dropdown.",
-    Callback = function()
-        if selectedStructure == "Nenhum" then
-            WindUI:Notify({Title = "Teleporte", Content = "Nenhuma estrutura selecionada.", Color = "Red", Duration = 3})
-            return
-        end
-        local coords = STRUCTURE_TELEPORT_COORDS[selectedStructure]
-        if coords then
-            teleportToPosition(coords, selectedStructure)
-        else
-            WindUI:Notify({Title = "Teleporte", Content = "Coordenadas para '" .. selectedStructure .. "' nao encontradas!", Color = "Red", Duration = 3})
-        end
-    end
-})
-
--- Botões TP Fogueira/Bancada (mantidos, mas pode-se considerar usar os da nova seção de estruturas se quiser remover redundância)
-TabTeleporte:Divider()
-TabTeleporte:Section({ Title = "Teleporte para Entidades Rastreadas" })
-TabTeleporte:Button({
-    Title = "TP para Fogueira Rastreada",
-    Desc = "Teleporta voce para a fogueira principal (MainFire) mais proxima rastreada.",
+    Title = "TP para Fogueira",
+    Desc = "Teleporta voce para a fogueira principal (MainFire).",
     Callback = function()
         local foundMainFire = nil
         for instance, _ in pairs(trackedStructures) do
@@ -1341,13 +1251,13 @@ TabTeleporte:Button({
         if foundMainFire then
             teleportToPosition(getSafePosition(foundMainFire), "Fogueira ("..foundMainFire.Name..")")
         else
-            WindUI:Notify({Title = "Teleporte", Content = "Nenhuma fogueira rastreada encontrada no mapa.", Color = "Red", Duration = 3})
+            WindUI:Notify({Title = "Teleporte", Content = "Nenhuma fogueira encontrada no mapa.", Color = "Red", Duration = 3})
         end
     end
 })
 TabTeleporte:Button({
-    Title = "TP para Bancada Rastreada",
-    Desc = "Teleporta voce para a bancada de trabalho principal (CraftingBench) mais proxima rastreada.",
+    Title = "TP para Bancada",
+    Desc = "Teleporta voce para a bancada de trabalho principal (CraftingBench).",
     Callback = function()
         local foundCraftingBench = nil
         for instance, _ in pairs(trackedStructures) do
@@ -1359,14 +1269,14 @@ TabTeleporte:Button({
         if foundCraftingBench then
             teleportToPosition(getSafePosition(foundCraftingBench), "Bancada ("..foundCraftingBench.Name..")")
         else
-            WindUI:Notify({Title = "Teleporte", Content = "Nenhuma bancada de trabalho rastreada encontrada no mapa.", Color = "Red", Duration = 3})
+            WindUI:Notify({Title = "Teleporte", Content = "Nenhuma bancada de trabalho encontrada no mapa.", Color = "Red", Duration = 3})
         end
     end
 })
 
 local selectedKid = "Nenhum"
 local kidDropdown_UI = TabTeleporte:Dropdown({
-    Title = "TP para Crianca Rastreada:",
+    Title = "TP para Crianca:",
     Values = {"Nenhum"},
     Default = selectedKid,
     Callback = function(name)
@@ -1514,7 +1424,3 @@ applyPlayerMovement()
 updateStopButtonVisibility() -- Garante que o botao esteja invisivel no inicio
 
 WindUI:Notify({Title = "Script 99 Noites", Content = "Script carregado com sucesso!", Color = "Dark", Duration = 3})
-
--- !!! Este 'end' extra é uma medida de segurança para resolver erros de EOF persistentes.
--- Ele não deve ser necessário se todos os outros 'end' estiverem corretos, mas pode ajudar em certos ambientes.
-end
