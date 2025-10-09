@@ -51,10 +51,10 @@ local espColor = Color3.fromRGB(0, 255, 0)
 -- BRING GLOBAL
 local bringUntouchable = false
 local bringFreecamActive = false
-local bringHeight = 50
+local bringHeight = 20
 local noQuantityLimit = false
 local selectedBringDestination = "Eu"
-local BRING_AUTO_COOLDOWN = 1.0
+local BRING_AUTO_COOLDOWN = 1
 local activeAutoBringCount = 0
 
 -- Player original state (para Bring TP / Untouchable / Freecam)
@@ -72,7 +72,7 @@ local originalPlayerState = {
 -- BRING METHODS
 local currentBringMethod = "Rapido"
 local bringSimpleMaxQuantity = 100
-local bringTPCooldown = 1.0
+local bringTPCooldown = 1
 
 -- PLAYER MOVEMENT
 local currentWalkSpeed = 16
