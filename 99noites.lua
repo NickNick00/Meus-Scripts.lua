@@ -53,7 +53,7 @@ local bringUntouchable = false
 local bringFreecamActive = false
 local bringHeight = 20
 local noQuantityLimit = false
-local selectedBringDestination = "Eu"
+local selectedBringDestination = "Voce (Player)" -- Ajustado para o formato padrão do dropdown
 local BRING_AUTO_COOLDOWN = 1
 local activeAutoBringCount = 0
 
@@ -70,8 +70,10 @@ local originalPlayerState = {
 }
 
 -- BRING METHODS
-local currentBringMethod = "Rapido"
+local currentBringMethod = "Simples" -- Ajustado para "Simples"
+local bringSimpleRange = 10000 -- Adicionado de volta, era importante.
 local bringSimpleMaxQuantity = 100
+local bringTPRange = 10000 -- Adicionado de volta, era importante.
 local bringTPCooldown = 1
 
 -- PLAYER MOVEMENT
@@ -130,7 +132,7 @@ local ITEM_DATABASE = {
 
 local CATEGORY_CONTROLS = {}
 for _, cat in ipairs({"Combustivel", "Comida e Cura", "Sucata", "Armas e Armaduras", "Outros", "Meteorito", "Cultista"}) do
-    CATEGORY_CONTROLS[cat] = {specificItem = nil, lastIndex = 1, lastBringTimeTP = 0, autoBringActive = false, autoBringConnection = nil, lastAutoBringTime = 0}
+    CATEGORY_CONTROLS[cat] = {specificItem = {}, lastIndex = 1, lastBringTimeTP = 0, autoBringActive = false, autoBringConnection = nil, lastAutoBringTime = 0}
 end
 
 -- ===================================================================
@@ -144,9 +146,9 @@ local BRINGABLE_CATEGORIES_LIST = {}
 for _, category in pairs(ITEM_DATABASE) do if not find(BRINGABLE_CATEGORIES_LIST, category) then table.insert(BRINGABLE_CATEGORIES_LIST, category) end end
 table.sort(BRINGABLE_CATEGORIES_LIST)
 
-local CAMPFIRE_STRUCTURE_NAMES = {"MainFire", "Campfire"}
-local WORKBENCH_STRUCTURE_NAMES = {"CraftingBench", "Crafting Bench", "Workbench", "Work Bench", "CraftingTable", "Crafting Table"}
-local CAMPGROUND_NAMES = {"Campground", "CampArea", "BaseCamp", "SmallCamp"}
+local CAMPFIRE_STRUCTURE_NAMES = {"MainFire", "Campfire", "Fogueira", "Camp", "Lareira"} -- Restore full list
+local WORKBENCH_STRUCTURE_NAMES = {"CraftingBench", "Crafting Bench", "Workbench", "Work Bench", "Bancada", "CraftingTable", "Crafting Table"} -- Restore full list
+local CAMPGROUND_NAMES = {"Campground", "CampArea", "BaseCamp", "AcampamentoPrincipal", "SmallCamp"} -- Restore full list
 local GIANT_TREE_NAMES = {"TreeGiant", "GiantTree"}
 local KID_NAMES = {"DinoKid", "KrakenKid", "SquidKid", "KoalaKid"}
 local ANIMAL_NAMES = {"Bunny", "Bear", "Wolf", "Spider", "Scorpion", "Crow"}
@@ -258,7 +260,7 @@ local function initializeItemTracking()
 end
 
 local debouncedUpdateBringDestinationDropdown = debounce(function(dropdown)
-    local currentDestinations = {"Voce"}
+    local currentDestinations = {"Voce (Player)"} -- Mantem o formato original
     local tempTracked = {}; for inst, _ in pairs(trackedStructures) do table.insert(tempTracked, inst) end; for inst, _ in pairs(trackedKids) do table.insert(tempTracked, inst) end
     for _, instance in ipairs(tempTracked) do
         if instance and instance.Parent then
@@ -299,7 +301,7 @@ end
 
 local function getBringTargetCFrame(destinationString, playerHrp)
     local offsetY = bringHeight 
-    if destinationString == "Voce" and playerHrp and playerHrp.Parent then return playerHrp.CFrame * CFrame.new(0, offsetY, -3) end
+    if destinationString == "Voce (Player)" and playerHrp and playerHrp.Parent then return playerHrp.CFrame * CFrame.new(0, offsetY, -3) end
     local pureName, targetX, targetZ = parseDestinationString(destinationString)
     local targetInstance = nil
     local allTracked = {}; for inst, _ in pairs(trackedStructures) do table.insert(allTracked, inst) end; for inst, _ in pairs(trackedKids) do table.insert(allTracked, inst) end
@@ -402,7 +404,7 @@ local function runBringLogic(categoryName, itemsToBringList, bringRange, maxQuan
     end
     
     local actualItemsPulled = 0
-    if bringMethod == "rapido" then
+    if bringMethod == "Simples" then -- Nome do método ajustado
         local currentMaxQuantity = noQuantityLimit and #itemsFoundInRange or maxQuantity
         local control = CATEGORY_CONTROLS[categoryName]; control.lastIndex = control.lastIndex or 1
 
@@ -483,19 +485,19 @@ local function bringItemsOnceForCategory(categoryName)
     if not selectedBringDestination or selectedBringDestination == "Nenhum" then
         WindUI:Notify({Title = "Bring Error", Content = "Selecione um destino valido para o Bring!", Color = "Red", Duration = 3}) return
     end
-    if control.specificItem == nil or control.specificItem == "" then
-        WindUI:Notify({Title = "Bring Error", Content = "Selecione um item para puxar na categoria '" .. categoryName .. "'!", Color = "Red", Duration = 3}) return
+    if #control.specificItem == 0 then -- Agora specificItem é uma tabela
+        WindUI:Notify({Title = "Bring Error", Content = "Selecione pelo menos um item para puxar na categoria '" .. categoryName .. "'!", Color = "Red", Duration = 3}) return
     end
 
-    local bringRange = (currentBringMethod == "rapido" and bringSimpleRange) or bringTPRange
-    local maxQuantity = (currentBringMethod == "rapido" and bringSimpleMaxQuantity) or 1
+    local bringRange = (currentBringMethod == "Simples" and bringSimpleRange) or bringTPRange
+    local maxQuantity = (currentBringMethod == "Simples" and bringSimpleMaxQuantity) or 1
     local cooldown = (currentBringMethod == "Teleporte" and bringTPCooldown) or 0
     
-    local success = runBringLogic(categoryName, {control.specificItem}, bringRange, maxQuantity, cooldown, currentBringMethod)
+    local success = runBringLogic(categoryName, control.specificItem, bringRange, maxQuantity, cooldown, currentBringMethod) -- Passa a tabela
     if success then
-        WindUI:Notify({Title = "Bring Manual", Content = "Itens de '" .. control.specificItem .. "' puxados para '" .. selectedBringDestination .. "'!", Color = "Green", Duration = 2})
+        WindUI:Notify({Title = "Bring Manual", Content = "Itens de '" .. table.concat(control.specificItem, ", ") .. "' puxados para '" .. selectedBringDestination .. "'!", Color = "Green", Duration = 2})
     else
-        WindUI:Notify({Title = "Bring Manual", Content = "Nenhum item '" .. control.specificItem .. "' encontrado no raio ou em cooldown.", Color = "Orange", Duration = 2})
+        WindUI:Notify({Title = "Bring Manual", Content = "Nenhum item '" .. table.concat(control.specificItem, ", ") .. "' encontrado no raio ou em cooldown.", Color = "Orange", Duration = 2})
     end
 end
 
@@ -685,17 +687,17 @@ TabBring:Toggle({
 })
 
 local bringMethodDropdown_UI = TabBring:Dropdown({
-    Title = "Bring Method", Values = {"rapido", "Teleporte"}, Default = currentBringMethod,
+    Title = "Bring Method", Values = {"Simples", "Teleporte"}, Default = currentBringMethod, -- Manter como single-select
     Callback = function(name) currentBringMethod = name; WindUI:Notify({Title = "Bring Method", Content = "Metodo de Bring: " .. tostring(name), Color = "Blue", Duration = 2}) end
 })
 
 local bringLocalizationDropdown_UI = TabBring:Dropdown({
-    Title = "(Destination)", Values = {"(Voce)"}, Default = selectedBringDestination,
+    Title = "Trazer Localizacao (Destination)", Values = {"Voce (Player)"}, Default = selectedBringDestination, -- Manter como single-select
     Callback = function(name) selectedBringDestination = name; WindUI:Notify({Title = "Bring", Content = "Destino do Bring definido para: " .. tostring(name), Color = "Blue", Duration = 2}) end
 })
 
 local bringHeightInput_UI = TabBring:Input({
-    Title = "(Altura)", Placeholder = tostring(bringHeight), Default = tostring(bringHeight), Number = true,
+    Title = "Bring Height (Altura)", Placeholder = tostring(bringHeight), Default = tostring(bringHeight), Number = true,
     Callback = function(value)
         local numValue = tonumber(value)
         if numValue and numValue >= 0 and numValue <= 200 then bringHeight = numValue
@@ -706,12 +708,32 @@ local bringHeightInput_UI = TabBring:Input({
 TabBring:Divider()
 TabBring:Section({ Title = "Configuracoes por Metodo" })
 
+-- Adicionado de volta o input de range para "Simples"
+local bringSimpleRangeInput_UI = TabBring:Input({
+    Title = "Raio de Busca (Simples)", Placeholder = tostring(bringSimpleRange), Default = tostring(bringSimpleRange), Number = true,
+    Callback = function(value)
+        local numValue = tonumber(value)
+        if numValue and numValue >= 10 and numValue <= 20000 then bringSimpleRange = numValue
+        else WindUI:Notify({Title = "Bring (Simples)", Content = "Raio invalido! Use um numero entre 10 e 20000.", Color = "Red", Duration = 3}); bringSimpleRangeInput_UI:Set(tostring(bringSimpleRange)) end
+    end
+})
+
 local bringSimpleMaxQuantityInput_UI = TabBring:Input({
     Title = "Maximo de Itens por Vez (Simples)", Placeholder = tostring(bringSimpleMaxQuantity), Default = tostring(bringSimpleMaxQuantity), Number = true,
     Callback = function(value)
         local numValue = tonumber(value)
         if numValue and numValue >= 5 and numValue <= 200 then bringSimpleMaxQuantity = numValue
         else WindUI:Notify({Title = "Bring (Simples)", Content = "Quantidade invalida! Use um numero entre 5 e 200.", Color = "Red", Duration = 3}); bringSimpleMaxQuantityInput_UI:Set(tostring(bringSimpleMaxQuantity)) end
+    end
+})
+
+-- Adicionado de volta o input de range para "Teleporte"
+local bringTPRangeInput_UI = TabBring:Input({
+    Title = "Raio de Busca (Teleporte)", Placeholder = tostring(bringTPRange), Default = tostring(bringTPRange), Number = true,
+    Callback = function(value)
+        local numValue = tonumber(value)
+        if numValue and numValue >= 10 and numValue <= 20000 then bringTPRange = numValue
+        else WindUI:Notify({Title = "Bring (Teleporte)", Content = "Raio invalido! Use um numero entre 10 e 20000.", Color = "Red", Duration = 3}); bringTPRangeInput_UI:Set(tostring(bringTPRange)) end
     end
 })
 
@@ -732,21 +754,24 @@ TabBring:Toggle({
 TabBring:Divider()
 TabBring:Section({ Title = "Bring Manual por Categoria" })
 
--- Consolidação da UI para Bring Manual por Categoria
+-- Consolidação da UI para Bring Manual por Categoria com Multi-Seleção de Itens
 for _, categoryName in ipairs(BRINGABLE_CATEGORIES_LIST) do
     local categoryControl = CATEGORY_CONTROLS[categoryName]
     local itemsInCategoryList = getAllItemNamesForCategory(categoryName)
     local defaultItem = itemsInCategoryList[1] or nil
-    categoryControl.specificItem = defaultItem
+    categoryControl.specificItem = defaultItem and {defaultItem} or {} -- Inicia como tabela
 
     TabBring:Dropdown({
-        Title = categoryName .. " (Item)", Values = itemsInCategoryList, Default = defaultItem,
-        Callback = function(name) categoryControl.specificItem = name end
+        Title = categoryName .. " (Itens)", Values = itemsInCategoryList, Value = categoryControl.specificItem, -- Define o valor inicial como tabela
+        Multi = true, AllowNone = true, -- Ativa multi-seleção
+        Callback = function(selectedItems)
+            categoryControl.specificItem = selectedItems -- selectedItems será uma tabela
+        end
     })
     
     TabBring:Button({
         Title = "Trazer " .. categoryName .. " (Uma Vez)",
-        Desc = "Puxa o item selecionado da categoria " .. categoryName .. " uma vez para o destino.",
+        Desc = "Puxa os itens selecionados da categoria " .. categoryName .. " uma vez para o destino.",
         Callback = function() bringItemsOnceForCategory(categoryName) end
     })
 end
@@ -835,7 +860,7 @@ TabTeleporte:Button({
 
 local selectedKid = "Nenhum"
 local kidDropdown_UI = TabTeleporte:Dropdown({
-    Title = "TP para Crianca:", Values = {"Nenhum"}, Default = selectedKid,
+    Title = "TP para Crianca:", Values = {"Nenhum"}, Default = selectedKid, -- Manter como single-select
     Callback = function(name) selectedKid = name; WindUI:Notify({Title = "Teleporte", Content = "Crianca selecionada: " .. tostring(name), Color = "Blue", Duration = 2}) end
 })
 TabTeleporte:Button({
@@ -857,6 +882,24 @@ TabTeleporte:Button({
 -- ===================================================================
 --                     HUD - PARAR TUDO
 -- ===================================================================
+
+local stopBringButton = Instance.new("TextButton")
+stopBringButton.Name = "StopBringButton"; stopBringButton.Size = UDim2.new(0, 100, 0, 50)
+stopBringButton.Position = UDim2.new(0.5, -50, 1, -100); stopBringButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+stopBringButton.TextColor3 = Color3.fromRGB(255, 255, 255); stopBringButton.Text = "PARAR TUDO"
+stopBringButton.Font = Enum.Font.SourceSansBold; stopBringButton.TextSize = 18; stopBringButton.ZIndex = 10
+stopBringButton.Visible = false; stopBringButton.Active = true
+
+local stopBringGui = Instance.new("ScreenGui"); stopBringGui.Name = "StopBringHUD"; stopBringGui.Parent = Player:WaitForChild("PlayerGui")
+stopBringButton.Parent = stopBringGui
+
+stopBringButton.MouseButton1Click:Connect(function()
+    for categoryName, control in pairs(CATEGORY_CONTROLS) do if control.autoBringActive then deactivateAutoBringForCategory(categoryName) end end
+    bringFreecamActive = false; bringUntouchable = false
+    restorePlayerState()
+    updateStopButtonVisibility()
+    WindUI:Notify({Title = "Pânico", Content = "Todos os Brings desativados e estado do jogador restaurado!", Color = "Red", Duration = 3})
+end)
 
 -- ===================================================================
 --                     INICIALIZAÇÃO E EVENTOS
