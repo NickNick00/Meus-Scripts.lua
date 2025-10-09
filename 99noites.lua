@@ -53,7 +53,7 @@ local bringUntouchable = false
 local bringFreecamActive = false
 local bringHeight = 50
 local noQuantityLimit = false
-local selectedBringDestination = "Voce (Player)"
+local selectedBringDestination = "Eu"
 local BRING_AUTO_COOLDOWN = 1.0
 local activeAutoBringCount = 0
 
@@ -70,11 +70,9 @@ local originalPlayerState = {
 }
 
 -- BRING METHODS
-local currentBringMethod = "Simples"
-local bringSimpleRange = 10000
-local bringSimpleMaxQuantity = 50
-local bringTPRange = 10000
-local bringTPCooldown = 0.5
+local currentBringMethod = "Rapido"
+local bringSimpleMaxQuantity = 100
+local bringTPCooldown = 1.0
 
 -- PLAYER MOVEMENT
 local currentWalkSpeed = 16
@@ -83,14 +81,14 @@ local currentJumpPower = 50
 -- KILL AURA
 local killAuraAtivo = false
 local killAuraConnection = nil
-local killAuraRange = 50
+local killAuraRange = 10
 
 -- ===================================================================
 --                  ITENS E CATEGORIAS CONFIGURÁVEIS
 -- ===================================================================
 
 local ITEM_DATABASE = {
-    Log = "Combustivel", Wood = "Combustivel", Chair = "Combustivel", Biofuel = "Combustivel", Coal = "Combustivel",
+    Log = "Combustivel", Chair = "Combustivel", Biofuel = "Combustivel", Coal = "Combustivel",
     ["Fuel Canister"] = "Combustivel", ["Oil Barrel"] = "Combustivel", Sapling = "Combustivel",
     Carrot = "Comida e Cura", Corn = "Comida e Cura", Pumpkin = "Comida e Cura", Berry = "Comida e Cura", Apple = "Comida e Cura",
     Morsel = "Comida e Cura", ["Cooked Morsel"] = "Comida e Cura", Steak = "Comida e Cura", ["Cooked Steak"] = "Comida e Cura",
@@ -139,16 +137,16 @@ end
 --                  FUNÇÕES AUXILIARES DE RASTREAMENTO E UTILIDADE
 -- ===================================================================
 
-local updateCooldown = 0.5 -- Debounce time for dropdowns
+local updateCooldown = 1.0 -- Debounce time for dropdowns
 local find = function(tbl, value) for _, v in ipairs(tbl) do if v == value then return true end end return false end
 
 local BRINGABLE_CATEGORIES_LIST = {}
 for _, category in pairs(ITEM_DATABASE) do if not find(BRINGABLE_CATEGORIES_LIST, category) then table.insert(BRINGABLE_CATEGORIES_LIST, category) end end
 table.sort(BRINGABLE_CATEGORIES_LIST)
 
-local CAMPFIRE_STRUCTURE_NAMES = {"MainFire", "Camp", "Fogueira", "Campfire", "Lareira"}
-local WORKBENCH_STRUCTURE_NAMES = {"CraftingBench", "Crafting Bench", "Workbench", "Work Bench", "Bancada", "CraftingTable", "Crafting Table"}
-local CAMPGROUND_NAMES = {"Campground", "CampArea", "BaseCamp", "AcampamentoPrincipal", "SmallCamp"}
+local CAMPFIRE_STRUCTURE_NAMES = {"MainFire", "Campfire"}
+local WORKBENCH_STRUCTURE_NAMES = {"CraftingBench", "Crafting Bench", "Workbench", "Work Bench", "CraftingTable", "Crafting Table"}
+local CAMPGROUND_NAMES = {"Campground", "CampArea", "BaseCamp", "SmallCamp"}
 local GIANT_TREE_NAMES = {"TreeGiant", "GiantTree"}
 local KID_NAMES = {"DinoKid", "KrakenKid", "SquidKid", "KoalaKid"}
 local ANIMAL_NAMES = {"Bunny", "Bear", "Wolf", "Spider", "Scorpion", "Crow"}
@@ -260,7 +258,7 @@ local function initializeItemTracking()
 end
 
 local debouncedUpdateBringDestinationDropdown = debounce(function(dropdown)
-    local currentDestinations = {"Voce (Player)"}
+    local currentDestinations = {"Voce"}
     local tempTracked = {}; for inst, _ in pairs(trackedStructures) do table.insert(tempTracked, inst) end; for inst, _ in pairs(trackedKids) do table.insert(tempTracked, inst) end
     for _, instance in ipairs(tempTracked) do
         if instance and instance.Parent then
@@ -301,7 +299,7 @@ end
 
 local function getBringTargetCFrame(destinationString, playerHrp)
     local offsetY = bringHeight 
-    if destinationString == "Voce (Player)" and playerHrp and playerHrp.Parent then return playerHrp.CFrame * CFrame.new(0, offsetY, -3) end
+    if destinationString == "Voce" and playerHrp and playerHrp.Parent then return playerHrp.CFrame * CFrame.new(0, offsetY, -3) end
     local pureName, targetX, targetZ = parseDestinationString(destinationString)
     local targetInstance = nil
     local allTracked = {}; for inst, _ in pairs(trackedStructures) do table.insert(allTracked, inst) end; for inst, _ in pairs(trackedKids) do table.insert(allTracked, inst) end
@@ -404,7 +402,7 @@ local function runBringLogic(categoryName, itemsToBringList, bringRange, maxQuan
     end
     
     local actualItemsPulled = 0
-    if bringMethod == "Simples" then
+    if bringMethod == "rapido" then
         local currentMaxQuantity = noQuantityLimit and #itemsFoundInRange or maxQuantity
         local control = CATEGORY_CONTROLS[categoryName]; control.lastIndex = control.lastIndex or 1
 
@@ -489,8 +487,8 @@ local function bringItemsOnceForCategory(categoryName)
         WindUI:Notify({Title = "Bring Error", Content = "Selecione um item para puxar na categoria '" .. categoryName .. "'!", Color = "Red", Duration = 3}) return
     end
 
-    local bringRange = (currentBringMethod == "Simples" and bringSimpleRange) or bringTPRange
-    local maxQuantity = (currentBringMethod == "Simples" and bringSimpleMaxQuantity) or 1
+    local bringRange = (currentBringMethod == "rapido" and bringSimpleRange) or bringTPRange
+    local maxQuantity = (currentBringMethod == "rapido" and bringSimpleMaxQuantity) or 1
     local cooldown = (currentBringMethod == "Teleporte" and bringTPCooldown) or 0
     
     local success = runBringLogic(categoryName, {control.specificItem}, bringRange, maxQuantity, cooldown, currentBringMethod)
@@ -687,17 +685,17 @@ TabBring:Toggle({
 })
 
 local bringMethodDropdown_UI = TabBring:Dropdown({
-    Title = "Bring Method", Values = {"Simples", "Teleporte"}, Default = currentBringMethod,
+    Title = "Bring Method", Values = {"rapido", "Teleporte"}, Default = currentBringMethod,
     Callback = function(name) currentBringMethod = name; WindUI:Notify({Title = "Bring Method", Content = "Metodo de Bring: " .. tostring(name), Color = "Blue", Duration = 2}) end
 })
 
 local bringLocalizationDropdown_UI = TabBring:Dropdown({
-    Title = "Trazer Localizacao (Destination)", Values = {"Voce (Player)"}, Default = selectedBringDestination,
+    Title = "(Destination)", Values = {"(Voce)"}, Default = selectedBringDestination,
     Callback = function(name) selectedBringDestination = name; WindUI:Notify({Title = "Bring", Content = "Destino do Bring definido para: " .. tostring(name), Color = "Blue", Duration = 2}) end
 })
 
 local bringHeightInput_UI = TabBring:Input({
-    Title = "Bring Height (Altura)", Placeholder = tostring(bringHeight), Default = tostring(bringHeight), Number = true,
+    Title = "(Altura)", Placeholder = tostring(bringHeight), Default = tostring(bringHeight), Number = true,
     Callback = function(value)
         local numValue = tonumber(value)
         if numValue and numValue >= 0 and numValue <= 200 then bringHeight = numValue
@@ -708,30 +706,12 @@ local bringHeightInput_UI = TabBring:Input({
 TabBring:Divider()
 TabBring:Section({ Title = "Configuracoes por Metodo" })
 
-local bringSimpleRangeInput_UI = TabBring:Input({
-    Title = "Raio de Busca (Simples)", Placeholder = tostring(bringSimpleRange), Default = tostring(bringSimpleRange), Number = true,
-    Callback = function(value)
-        local numValue = tonumber(value)
-        if numValue and numValue >= 10 and numValue <= 20000 then bringSimpleRange = numValue
-        else WindUI:Notify({Title = "Bring (Simples)", Content = "Raio invalido! Use um numero entre 10 e 20000.", Color = "Red", Duration = 3}); bringSimpleRangeInput_UI:Set(tostring(bringSimpleRange)) end
-    end
-})
-
 local bringSimpleMaxQuantityInput_UI = TabBring:Input({
     Title = "Maximo de Itens por Vez (Simples)", Placeholder = tostring(bringSimpleMaxQuantity), Default = tostring(bringSimpleMaxQuantity), Number = true,
     Callback = function(value)
         local numValue = tonumber(value)
         if numValue and numValue >= 5 and numValue <= 200 then bringSimpleMaxQuantity = numValue
         else WindUI:Notify({Title = "Bring (Simples)", Content = "Quantidade invalida! Use um numero entre 5 e 200.", Color = "Red", Duration = 3}); bringSimpleMaxQuantityInput_UI:Set(tostring(bringSimpleMaxQuantity)) end
-    end
-})
-
-local bringTPRangeInput_UI = TabBring:Input({
-    Title = "Raio de Busca (Teleporte)", Placeholder = tostring(bringTPRange), Default = tostring(bringTPRange), Number = true,
-    Callback = function(value)
-        local numValue = tonumber(value)
-        if numValue and numValue >= 10 and numValue <= 20000 then bringTPRange = numValue
-        else WindUI:Notify({Title = "Bring (Teleporte)", Content = "Raio invalido! Use um numero entre 10 e 20000.", Color = "Red", Duration = 3}); bringTPRangeInput_UI:Set(tostring(bringTPRange)) end
     end
 })
 
@@ -877,24 +857,6 @@ TabTeleporte:Button({
 -- ===================================================================
 --                     HUD - PARAR TUDO
 -- ===================================================================
-
-local stopBringButton = Instance.new("TextButton")
-stopBringButton.Name = "StopBringButton"; stopBringButton.Size = UDim2.new(0, 100, 0, 50)
-stopBringButton.Position = UDim2.new(0.5, -50, 1, -100); stopBringButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-stopBringButton.TextColor3 = Color3.fromRGB(255, 255, 255); stopBringButton.Text = "PARAR TUDO"
-stopBringButton.Font = Enum.Font.SourceSansBold; stopBringButton.TextSize = 18; stopBringButton.ZIndex = 10
-stopBringButton.Visible = false; stopBringButton.Active = true
-
-local stopBringGui = Instance.new("ScreenGui"); stopBringGui.Name = "StopBringHUD"; stopBringGui.Parent = Player:WaitForChild("PlayerGui")
-stopBringButton.Parent = stopBringGui
-
-stopBringButton.MouseButton1Click:Connect(function()
-    for categoryName, control in pairs(CATEGORY_CONTROLS) do if control.autoBringActive then deactivateAutoBringForCategory(categoryName) end end
-    bringFreecamActive = false; bringUntouchable = false
-    restorePlayerState()
-    updateStopButtonVisibility()
-    WindUI:Notify({Title = "Pânico", Content = "Todos os Brings desativados e estado do jogador restaurado!", Color = "Red", Duration = 3})
-end)
 
 -- ===================================================================
 --                     INICIALIZAÇÃO E EVENTOS
